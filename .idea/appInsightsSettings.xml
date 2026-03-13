@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="org.herbrich.nexus" />
+                  <option name="mobileSdkAppId" value="1:8471367514:android:f87f848f7ca2e71deeed63" />
+                  <option name="projectId" value="jenniframe-158916" />
+                  <option name="projectNumber" value="8471367514" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

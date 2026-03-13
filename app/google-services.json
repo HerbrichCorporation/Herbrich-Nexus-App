@@ -1,0 +1,69 @@
+{
+  "project_info": {
+    "project_number": "8471367514",
+    "firebase_url": "https://jenniframe-158916.firebaseio.com",
+    "project_id": "jenniframe-158916",
+    "storage_bucket": "jenniframe-158916.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:8471367514:android:4a527b4ef505394b",
+        "android_client_info": {
+          "package_name": "org.herbrich.katana"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "8471367514-pcn2497fist6c65cgek2oaqj9kbb5u5u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzMZeNtp9MR7f_s0J_BL8iUqtacKNhoz8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "8471367514-5k87eo5q8r0edd1ve0rlbeklj3pecviu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:8471367514:android:f87f848f7ca2e71deeed63",
+        "android_client_info": {
+          "package_name": "org.herbrich.nexus"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "8471367514-pcn2497fist6c65cgek2oaqj9kbb5u5u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzMZeNtp9MR7f_s0J_BL8iUqtacKNhoz8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "8471367514-5k87eo5q8r0edd1ve0rlbeklj3pecviu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
