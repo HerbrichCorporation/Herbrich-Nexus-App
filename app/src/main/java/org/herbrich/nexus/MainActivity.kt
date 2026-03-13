@@ -69,9 +69,24 @@ class MainActivity : ComponentActivity() {
 }
 
 // 2. Die Liste
+// 2. Die Liste mit dem Header ganz oben
 @Composable
 fun NodeList(nodes: List<HerbrichNode>, modifier: Modifier = Modifier) {
-    LazyColumn(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+    ) {
+        // Das Logo als allererstes Element der Liste festlegen
+        item {
+            HerbrichLogoHeader(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp) // Etwas Abstand nach oben/unten
+            )
+        }
+
+        // Danach folgen die Karten der Wohnhäuser
         items(nodes) { node ->
             NodeCard(node = node)
         }

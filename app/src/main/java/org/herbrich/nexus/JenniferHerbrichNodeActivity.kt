@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -44,6 +43,7 @@ class JenniferHerbrichNodeActivity : ComponentActivity() {
                     if (nodeGuid.isNotEmpty()) {
                         try {
                             isLoading = true
+                            // API Call über Retrofit
                             val response = RetrofitClient.instance.getNode(nodeGuid)
                             nodeData = response
                             hasError = false
@@ -88,10 +88,24 @@ fun NodeDetailContent(node: HerbrichNode) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 40.dp),
+            .padding(horizontal = 24.dp, vertical = 24.dp), // Etwas weniger Padding oben für das Logo
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 1. Rundes Profilbild
+        // --- 0. Das Herbrich Logo (Wiederverwendbare Komponente) ---
+        HerbrichLogoHeader(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp)
+                .clickable {
+                    // Zurück zur Startseite (MainActivity)
+                    val intent = Intent(context, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    context.startActivity(intent)
+                }
+        )
+
+        // 1. Rundes Profilbild (Zentrum der Detailseite)
         Box(
             modifier = Modifier
                 .size(260.dp)
@@ -108,7 +122,7 @@ fun NodeDetailContent(node: HerbrichNode) {
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // 2. Titel
+        // 2. Titel & Herbrich Name
         Text(
             text = node.nodeName,
             fontSize = 34.sp,
@@ -138,7 +152,7 @@ fun NodeDetailContent(node: HerbrichNode) {
 
         Spacer(modifier = Modifier.height(48.dp))
 
-        // 4. Standort (Interaktiv)
+        // 4. Standort (Interaktiv mit Google Maps Verknüpfung)
         Column(modifier = Modifier.fillMaxWidth()) {
             Text("Standort", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Spacer(modifier = Modifier.height(12.dp))
@@ -162,6 +176,8 @@ fun NodeDetailContent(node: HerbrichNode) {
                 }
             }
         }
+
+        // Finaler Abstand unten
         Spacer(modifier = Modifier.height(40.dp))
     }
 }
