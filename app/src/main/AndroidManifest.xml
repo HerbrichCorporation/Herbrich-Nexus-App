@@ -18,9 +18,21 @@
         android:theme="@style/Theme.HerbrichNexus">
         <activity
             android:name=".JenniferHerbrichNodeActivity"
-            android:exported="false"
+            android:exported="true"
             android:label="@string/title_activity_jennifer_herbrich_node"
-            android:theme="@style/Theme.HerbrichNexus" />
+            android:theme="@style/Theme.HerbrichNexus">
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="https"
+                    android:host="www.herbrich.org"
+                    android:pathPrefix="/node/" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -28,7 +40,6 @@
             android:theme="@style/Theme.HerbrichNexus">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

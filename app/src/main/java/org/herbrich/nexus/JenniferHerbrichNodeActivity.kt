@@ -29,12 +29,17 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.ktx.analytics
+import com.google.firebase.ktx.Firebase
 
 class JenniferHerbrichNodeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // ZWINGEND: Firebase hier händisch starten, bevor Compose oder Coroutinen loslegen
         com.google.firebase.FirebaseApp.initializeApp(this)
+        // WICHTIG für OSM: Identifiziere deine App beim Karten-Server
+        org.osmdroid.config.Configuration.getInstance().userAgentValue = "HerbrichNexus-App (https://www.herbrich.org)"
         enableEdgeToEdge()
 
         val nodeGuid = intent.getStringExtra("NODE_GUID")
@@ -164,13 +169,25 @@ fun NodeDetailContent(node: HerbrichNode, ahState: AleksandarHerbrichNodeState) 
         }
 
         Spacer(modifier = Modifier.height(32.dp))
-
         // 2. Titel & Herbrich Name
+        var titleFontSize by remember { mutableStateOf(32.sp) } // Startgröße
         Text(
-            text = node.nodeName,
-            fontSize = 34.sp,
+            text = node.nodeName, // z.B. "Wohngruppe Graumannsweg"
+            fontSize = titleFontSize,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center, // Center-Ausrichtung sieht schöner aus (Jenni Jenni!)
             fontWeight = FontWeight.Bold,
-            color = Color.Black
+            // Der "Trick" für den Abstand: lineHeight sollte ca. 1.1x bis 1.2x der fontSize sein
+            lineHeight = (titleFontSize.value * 1.15f).sp,
+            letterSpacing = (-0.5).sp, // Macht große Titel moderner
+            maxLines = 2,
+            softWrap = true,
+            onTextLayout = { textLayoutResult ->
+                // Wenn der Text trotz 2 Zeilen überläuft, Schriftgröße schrumpfen
+                if (textLayoutResult.hasVisualOverflow && titleFontSize > 20.sp) {
+                    titleFontSize *= 0.9f
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
         )
         Text(
             text = node.herbrichName,
@@ -196,14 +213,40 @@ fun NodeDetailContent(node: HerbrichNode, ahState: AleksandarHerbrichNodeState) 
         Spacer(modifier = Modifier.height(48.dp))
 
         // 4. Standort (Interaktiv mit Google Maps Verknüpfung)
+        // 4. Standort (Interaktiv mit OSM + Google Maps Link)
         Column(modifier = Modifier.fillMaxWidth()) {
-            Text("Standort", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text("Standort in der Matrix", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
+
+            // 1. Die interaktive OSM Karte
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(250.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(1.dp, Color.LightGray, RoundedCornerShape(16.dp))
+            ) {
+                OsmMapView(
+                    modifier = Modifier.fillMaxSize(),
+                    latitude = node.latitude, // Deine API Koordinaten
+                    longitude = node.longitude
+                )
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
+
+            // 2. Der Google Maps Link direkt darunter
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(140.dp)
                     .clickable {
+                        val bundle = Bundle().apply {
+                            putString(FirebaseAnalytics.Param.ITEM_ID, node.hallAddress)
+                            putString(FirebaseAnalytics.Param.ITEM_NAME, node.herbrichName)
+                            putString(FirebaseAnalytics.Param.CONTENT_TYPE, "google_maps_link")
+                        }
+                        // Das Event absenden
+                        Firebase.analytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle)
                         val uri = Uri.parse("geo:${node.latitude},${node.longitude}?q=${node.latitude},${node.longitude}(${node.nodeName})")
                         val intent = Intent(Intent.ACTION_VIEW, uri).apply {
                             setPackage("com.google.android.apps.maps")
@@ -214,7 +257,13 @@ fun NodeDetailContent(node: HerbrichNode, ahState: AleksandarHerbrichNodeState) 
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
                 border = BorderStroke(1.dp, Color(0xFFEEEEEE))
             ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
                     Text("🗺️ In Google Maps öffnen", color = MaterialTheme.colorScheme.primary)
                 }
             }
@@ -240,7 +289,7 @@ fun Modifier.glowAnimation(state: AleksandarHerbrichNodeState): Modifier {
     )
 
     val color = when (state) {
-        AleksandarHerbrichNodeState.RootActivity -> Color.Red
+        AleksandarHerbrichNodeState.RootActivity -> Color(0xFFFF0000)
         AleksandarHerbrichNodeState.JenniJenni -> Color(0xFF00BFFF) // DeepSkyBlue für JenniJenni
         AleksandarHerbrichNodeState.Matrix -> Color(0xFF00FF00)
         else -> Color.Transparent

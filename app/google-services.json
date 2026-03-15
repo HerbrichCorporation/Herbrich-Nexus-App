@@ -54,6 +54,9 @@
         }
       ],
       "services": {
+        "analytics_service": {
+          "status": 1
+        },
         "appinvite_service": {
           "other_platform_oauth_client": [
             {

@@ -45,6 +45,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.ui)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -59,5 +60,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.0")
     implementation(libs.coil.compose)
     implementation("io.coil-kt:coil-compose:2.6.0")
-    implementation("com.google.firebase:firebase-database-ktx:20.3.0")
+
+    implementation(platform("com.google.firebase:firebase-bom:32.7.2"))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.database)
+    implementation("org.osmdroid:osmdroid-android:6.1.18")
 }
