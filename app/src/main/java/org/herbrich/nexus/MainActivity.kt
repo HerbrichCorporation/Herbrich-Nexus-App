@@ -1,5 +1,7 @@
 package org.herbrich.nexus
 
+import android.accounts.AccountManager
+import android.accounts.OnAccountsUpdateListener
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,9 +23,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -90,6 +94,7 @@ class MainActivity : ComponentActivity() {
 // 2. Die Liste mit dem Header ganz oben
 @Composable
 fun NodeList(nodes: List<HerbrichNode>, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -97,11 +102,39 @@ fun NodeList(nodes: List<HerbrichNode>, modifier: Modifier = Modifier) {
     ) {
         // Das Logo als allererstes Element der Liste festlegen
         item {
+            val accountManager = AccountManager.get(context)
+
+            var accounts by remember {
+                mutableStateOf(accountManager.getAccountsByType("org.herbrich.accounts"))
+            }
+
+// ✅ Listener der auf Account-Änderungen im System reagiert
+            DisposableEffect(Unit) {
+                val listener = OnAccountsUpdateListener { allAccounts ->
+                    accounts =
+                        allAccounts.filter { it.type == "org.herbrich.accounts" }.toTypedArray()
+                }
+                accountManager.addOnAccountsUpdatedListener(listener, null, true)
+                onDispose {
+                    accountManager.removeOnAccountsUpdatedListener(listener)
+                }
+            }
+
+            val isLoggedIn = accounts.isNotEmpty()
+            val currentUserName = if (isLoggedIn) accounts[0].name else null
             HerbrichLogoHeader(
+                isLoggedIn = isLoggedIn,
+                username = currentUserName,
+                onLoginClick = {
+                    // Korrekte Kotlin-Syntax für den Intent:
+                    val intent = Intent(context, LoginActivity::class.java)
+                    context.startActivity(intent)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 24.dp) // Etwas Abstand nach oben/unten
+                    .padding(bottom = 32.dp)
             )
+
         }
 
         // Danach folgen die Karten der Wohnhäuser

@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Herbrich Nexus</string>
     <string name="title_activity_jennifer_herbrich_node">JenniferHerbrichNodeActivity</string>
+    <string name="title_activity_login">LoginActivity</string>
 </resources>

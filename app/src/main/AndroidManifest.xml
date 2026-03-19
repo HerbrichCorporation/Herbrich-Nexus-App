@@ -6,6 +6,14 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" /> <!-- Zugriff auf GPS für die Bounding Box / Karten-Position -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+    <uses-permission android:name="android.permission.MANAGE_ACCOUNTS" />
+    <queries>
+        <intent>
+            <action android:name="android.accounts.AccountAuthenticator" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="true"
@@ -16,6 +24,11 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.HerbrichNexus">
+        <activity
+            android:name=".LoginActivity"
+            android:exported="false"
+            android:label="@string/title_activity_login"
+            android:theme="@style/Theme.HerbrichNexus" />
         <activity
             android:name=".JenniferHerbrichNodeActivity"
             android:exported="true"
@@ -28,9 +41,9 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:scheme="https"
                     android:host="www.herbrich.org"
-                    android:pathPrefix="/node/" />
+                    android:pathPrefix="/node/"
+                    android:scheme="https" />
             </intent-filter>
         </activity>
         <activity
@@ -40,9 +53,18 @@
             android:theme="@style/Theme.HerbrichNexus">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-    </application>
+        <service android:name=".HerbrichAccountService" android:exported="true">
+            <intent-filter>
+                <action android:name="android.accounts.AccountAuthenticator" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accounts.AccountAuthenticator"
+                android:resource="@xml/authenticator" />
+        </service>
 
+    </application>
 </manifest>

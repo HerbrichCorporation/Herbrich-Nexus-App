@@ -1,5 +1,7 @@
 package org.herbrich.nexus
 
+import android.accounts.AccountManager
+import android.accounts.OnAccountsUpdateListener
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -127,18 +129,39 @@ fun NodeDetailContent(node: HerbrichNode, ahState: AleksandarHerbrichNodeState) 
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // --- 0. Das Herbrich Logo (Wiederverwendbare Komponente) ---
+        // Ersetze den fehlerhaften Aufruf (Zeile 131-139) durch diesen:
+        val accountManager = AccountManager.get(context)
+
+        var accounts by remember {
+            mutableStateOf(accountManager.getAccountsByType("org.herbrich.accounts"))
+        }
+
+// ✅ Listener der auf Account-Änderungen im System reagiert
+        DisposableEffect(Unit) {
+            val listener = OnAccountsUpdateListener { allAccounts ->
+                accounts = allAccounts.filter { it.type == "org.herbrich.accounts" }.toTypedArray()
+            }
+            accountManager.addOnAccountsUpdatedListener(listener, null, true)
+            onDispose {
+                accountManager.removeOnAccountsUpdatedListener(listener)
+            }
+        }
+
+        val isLoggedIn = accounts.isNotEmpty()
+        val currentUserName = if (isLoggedIn) accounts[0].name else null
         HerbrichLogoHeader(
+            isLoggedIn = isLoggedIn,
+            username = currentUserName,
+            onLoginClick = {
+                // Korrekte Kotlin-Syntax für den Intent:
+                val intent = Intent(context, LoginActivity::class.java)
+                context.startActivity(intent)
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 32.dp)
-                .clickable {
-                    // Zurück zur Startseite (MainActivity)
-                    val intent = Intent(context, MainActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    }
-                    context.startActivity(intent)
-                }
         )
+
 
         // 1. Rundes Profilbild (Zentrum der Detailseite)
         Box(

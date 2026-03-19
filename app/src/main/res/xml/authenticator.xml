@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<account-authenticator
+    xmlns:android="http://schemas.android.com"
+    android:accountType="org.herbrich.accounts"
+    android:icon="@drawable/jenniferherbrich_herbrichcorporation"
+    android:smallIcon="@drawable/jenniferherbrich_herbrichcorporation"
+    android:label="Herbrich Account" />
