@@ -9,6 +9,7 @@
     <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS" />
     <uses-permission android:name="android.permission.GET_ACCOUNTS" />
     <uses-permission android:name="android.permission.MANAGE_ACCOUNTS" />
+
     <queries>
         <intent>
             <action android:name="android.accounts.AccountAuthenticator" />
@@ -24,6 +25,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.HerbrichNexus">
+        <activity
+            android:name=".NodesActivity"
+            android:exported="false" />
         <activity
             android:name=".LoginActivity"
             android:exported="false"
@@ -57,14 +61,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service android:name=".HerbrichAccountService" android:exported="true">
+
+        <service
+            android:name=".HerbrichAccountService"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.accounts.AccountAuthenticator" />
             </intent-filter>
+
             <meta-data
                 android:name="android.accounts.AccountAuthenticator"
                 android:resource="@xml/authenticator" />
         </service>
-
     </application>
+
 </manifest>

@@ -1,25 +1,23 @@
 package org.herbrich.nexus
 
 import android.accounts.Account
+import android.accounts.AccountAuthenticatorResponse
 import android.accounts.AccountManager
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,49 +37,79 @@ class LoginActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     LoginScreen(
                         modifier = Modifier.padding(innerPadding),
-                        onLoginRequest = { user, pass, onFinished ->
-                            performSystemLogin(user, pass, onFinished)
+                        onLoginRequest = { user: String, pass: String, cb: (Boolean, String?) -> Unit ->
+                            performSystemLogin(user, pass, cb)
                         }
                     )
                 }
             }
         }
     }
-    private fun performSystemLogin(username: String, password: String, onFinished: (Boolean, String?) -> Unit) {
+
+    private fun performSystemLogin(
+        username: String,
+        password: String,
+        onFinished: (Boolean, String?) -> Unit
+    ) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val response = RetrofitClient.instance.login(LoginRequest(username, password))
-
                 if (response.isSuccessful && response.body() != null) {
-                    val loginData = response.body()!!
+                    val data = response.body()!!
+                    val accountType = intent.getStringExtra("ACCOUNT_TYPE") ?: "org.herbrich.accounts"
+                    val authType = intent.getStringExtra("AUTH_TYPE") ?: "FullAccess"
 
-                    // ✅ NUR Ergebnis zurückgeben – kein AccountManager hier!
-                    val accountAuthenticatorResponse = intent.getParcelableExtra<android.accounts.AccountAuthenticatorResponse>(
-                        AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE
-                    )
-                    accountAuthenticatorResponse?.onResult(Bundle().apply {
+                    val am = AccountManager.get(this@LoginActivity)
+                    val account = Account(username, accountType)
+
+                    val userData = Bundle().apply {
+                        putString("jh_user_id", data.jh_user_id.toString())
+                    }
+
+                    val added = am.addAccountExplicitly(account, password, userData)
+                    if (!added) {
+                        am.setPassword(account, password)
+                        am.setUserData(account, "jh_user_id", data.jh_user_id.toString())
+                    }
+                    am.setAuthToken(account, authType, data.access_token)
+
+                    // Response für AccountManager
+                    val authResponse: AccountAuthenticatorResponse? =
+                        if (Build.VERSION.SDK_INT >= 33) {
+                            intent.getParcelableExtra(
+                                AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE,
+                                AccountAuthenticatorResponse::class.java
+                            )
+                        } else {
+                            @Suppress("DEPRECATION")
+                            intent.getParcelableExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE)
+                        }
+
+                    val resultBundle = Bundle().apply {
                         putString(AccountManager.KEY_ACCOUNT_NAME, username)
-                        putString(AccountManager.KEY_ACCOUNT_TYPE, "org.herbrich.accounts")
-                        putString(AccountManager.KEY_AUTHTOKEN, loginData.access_token)
-                        putString("jh_user_id", loginData.jh_user_id.toString())
-                        putString(AccountManager.KEY_PASSWORD, password)
-                    })
+                        putString(AccountManager.KEY_ACCOUNT_TYPE, accountType)
+                        putString(AccountManager.KEY_AUTHTOKEN, data.access_token)
+                    }
+                    authResponse?.onResult(resultBundle)
 
                     withContext(Dispatchers.Main) {
                         onFinished(true, username)
-                        setResult(RESULT_OK)
+                        val resultIntent = Intent().apply {
+                            putExtras(resultBundle)
+                        }
+                        setResult(RESULT_OK, resultIntent)
                         finish()
                     }
                 } else {
                     withContext(Dispatchers.Main) {
                         onFinished(false, null)
-                        Toast.makeText(this@LoginActivity, "Login abgelehnt: Prüfe deine Daten.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@LoginActivity, "Login abgelehnt", Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     onFinished(false, null)
-                    Toast.makeText(this@LoginActivity, "Netzwerkfehler: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@LoginActivity, "Netzwerk: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -91,127 +119,88 @@ class LoginActivity : ComponentActivity() {
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,
-    onLoginRequest: (String, String, (Boolean, String?) -> Unit) -> Unit
+    onLoginRequest: (username: String, password: String, onFinished: (Boolean, String?) -> Unit) -> Unit
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
-    var loggedInUser by remember { mutableStateOf<String?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val isLoggedIn = loggedInUser != null
-
-    Column(modifier = modifier.fillMaxSize()) {
-        HerbrichLogoHeader(
-            isLoggedIn = isLoggedIn,
-            username = loggedInUser
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Herbrich Nexus",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 32.dp)
         )
 
-        Column(
+        OutlinedTextField(
+            value = username,
+            onValueChange = { username = it },
+            label = { Text("Benutzername") },
+            singleLine = true,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            if (!isLoggedIn) {
-                Text(
-                    text = "Nexus Authentifizierung",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            enabled = !isLoading
+        )
 
-                Spacer(modifier = Modifier.height(32.dp))
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Passwort") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
+            enabled = !isLoading
+        )
 
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text("Benutzername") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    enabled = !isLoading
-                )
+        if (errorMessage != null) {
+            Text(
+                text = errorMessage!!,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+        }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Passwort") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    enabled = !isLoading
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Button(
-                    onClick = {
-                        isLoading = true
-                        onLoginRequest(username, password) { success, name ->
-                            isLoading = false
-                            if (success) loggedInUser = name
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    enabled = !isLoading
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                    } else {
-                        Text("LOGIN", fontWeight = FontWeight.Bold)
+        Button(
+            onClick = {
+                if (username.isBlank() || password.isBlank()) {
+                    errorMessage = "Bitte Benutzername und Passwort eingeben"
+                    return@Button
+                }
+                isLoading = true
+                errorMessage = null
+                onLoginRequest(username, password) { success, _ ->
+                    isLoading = false
+                    if (!success) {
+                        errorMessage = "Login fehlgeschlagen"
                     }
                 }
-            } else {
-                Text("Willkommen zurück, $loggedInUser!", fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Du bist jetzt mit der Herbrich Matrix verbunden.")
-            }
-        }
-    }
-}
-
-@Composable
-fun HerbrichLogoHeader(
-    isLoggedIn: Boolean,
-    username: String?,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.jenniferherbrich_herbrichcorporation),
-            contentDescription = "Herbrich Corporation",
+            },
             modifier = Modifier
-                .width(180.dp)
-                .height(40.dp),
-            contentScale = ContentScale.FillBounds
-        )
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(
-                        color = if (isLoggedIn) Color.Green else Color.Red,
-                        shape = CircleShape
-                    )
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = if (isLoggedIn) username?.uppercase() ?: "ONLINE" else "OFFLINE",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.DarkGray
-            )
+                .fillMaxWidth()
+                .height(50.dp),
+            enabled = !isLoading
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Anmelden", fontSize = 16.sp)
+            }
         }
     }
 }

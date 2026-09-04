@@ -1,0 +1,188 @@
+package org.herbrich.nexus
+
+import android.accounts.AccountManager
+import android.accounts.OnAccountsUpdateListener
+import android.content.Intent
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.analytics
+import com.google.firebase.analytics.ktx.analytics
+import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.launch
+import org.herbrich.nexus.ui.theme.HerbrichNexusTheme
+
+// 1. Das ViewModel: Bleibt so, wie es ist
+class NexusViewModel : ViewModel() {
+    var nodes by mutableStateOf<List<HerbrichNode>>(emptyList())
+    var isLoading by mutableStateOf(false)
+
+    fun loadNodes() {
+        viewModelScope.launch {
+            isLoading = true
+            try {
+                val response = RetrofitClient.instance.getNodes(page = 1)
+                nodes = response.items
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+}
+
+class NodesActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            HerbrichNexusTheme {
+                val vm: NexusViewModel = viewModel()
+
+                LaunchedEffect(Unit) {
+                    vm.loadNodes()
+                }
+
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    NodeList(
+                        nodes = vm.nodes,
+                        modifier = Modifier.padding(innerPadding)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// 2. Die Liste mit dem Header ganz oben
+@Composable
+fun NodeList(nodes: List<HerbrichNode>, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+    ) {
+        item {
+            val accountManager = AccountManager.get(context)
+            var accounts by remember {
+                mutableStateOf(accountManager.getAccountsByType("org.herbrich.accounts"))
+            }
+            DisposableEffect(Unit) {
+                val listener = OnAccountsUpdateListener { allAccounts ->
+                    accounts =
+                        allAccounts.filter { it.type == "org.herbrich.accounts" }.toTypedArray()
+                }
+                accountManager.addOnAccountsUpdatedListener(listener, null, true)
+                onDispose {
+                    accountManager.removeOnAccountsUpdatedListener(listener)
+                }
+            }
+            val isLoggedIn = accounts.isNotEmpty()
+            val currentUserName = if (isLoggedIn) accounts[0].name else null
+            HerbrichLogoHeader(
+                isLoggedIn = isLoggedIn,
+                username = currentUserName,
+                onLoginClick = {
+                    val intent = Intent(context, LoginActivity::class.java)
+                    context.startActivity(intent)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp)
+            )
+        }
+        items(nodes) { node ->
+            NodeCard(node = node)
+        }
+    }
+}
+
+// 3. Die korrigierte NodeCard
+@Composable
+fun NodeCard(node: HerbrichNode) {
+    val context = LocalContext.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clickable {
+                val bundle = Bundle().apply {
+                    putString(FirebaseAnalytics.Param.ITEM_ID, node.hallAddress)
+                    putString(FirebaseAnalytics.Param.ITEM_NAME, node.herbrichName)
+                    putString(FirebaseAnalytics.Param.CONTENT_TYPE, "node_card")
+                }
+                Firebase.analytics.logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, bundle)
+                val intent = Intent(context, JenniferHerbrichNodeActivity::class.java).apply {
+                    putExtra("NODE_GUID", node.hallAddress)
+                }
+                context.startActivity(intent)
+            },
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column {
+            AsyncImage(
+                model = node.imageUrl,
+                contentDescription = "Bild von ${node.herbrichName}",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
+                contentScale = ContentScale.Crop
+            )
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = node.herbrichName,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = node.nodeName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = node.nodeDescription,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
+}
