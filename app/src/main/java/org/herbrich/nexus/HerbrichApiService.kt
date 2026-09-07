@@ -29,6 +29,8 @@ interface HerbrichApiService {
     // --- 1. AUTHENTIFIZIERUNG ---
     @POST("v1/xauth/login")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
+    @GET("v1/xauth/heartbeat")
+    suspend fun heartbeat(@Header("Authorization") bearerToken: String): HeartbeatResponse
 
     // --- 2. DELPHIN-VERWALTUNG ---
     // Korrekte URL für die Liste laut deiner Angabe

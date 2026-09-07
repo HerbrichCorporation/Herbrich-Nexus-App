@@ -22,10 +22,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.herbrich.nexus.ui.theme.HerbrichNexusTheme
+import java.util.concurrent.TimeUnit
 
 class LoginActivity : ComponentActivity() {
 
@@ -72,6 +75,12 @@ class LoginActivity : ComponentActivity() {
                         am.setUserData(account, "jh_user_id", data.jh_user_id.toString())
                     }
                     am.setAuthToken(account, authType, data.access_token)
+
+                    // Heartbeat starten - verlängert den Token, kein neuer Row in jh_api_tokens
+                    val hb = OneTimeWorkRequestBuilder<HerbrichHeartbeatWorker>()
+                        .setInitialDelay(30, TimeUnit.SECONDS)
+                        .build()
+                    WorkManager.getInstance(this@LoginActivity).enqueue(hb)
 
                     // Response für AccountManager
                     val authResponse: AccountAuthenticatorResponse? =

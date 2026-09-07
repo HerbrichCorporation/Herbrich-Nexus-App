@@ -7,14 +7,22 @@ data class LoginRequest(
     @SerializedName("Username") val username: String,
     @SerializedName("Password") val password: String
 )
-
 data class LoginResponse(
     val access_token: String,
     val token_type: String,
     val expires_in: Int,
     val jh_user_id: String
 )
-
+data class HeartbeatResponse(
+    val Alive: Boolean,
+    val JhUserId: String,
+    val OldExpiresAt: Long,
+    val NewExpiresAt: Long,
+    val ExpiresIn: Long,
+    val NextHeartbeatAt: Long,
+    val NextHeartbeatIn: Long,
+    val ServerTime: Long
+)
 // --- DOLPHIN CREATE (POST) ---
 data class AddDolphinRequest(
     val DolphinEntity: String? = null,

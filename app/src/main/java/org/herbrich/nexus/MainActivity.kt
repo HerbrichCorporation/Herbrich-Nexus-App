@@ -1,5 +1,6 @@
 package org.herbrich.nexus
 
+import android.accounts.AccountManager
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -24,11 +25,26 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import org.herbrich.nexus.ui.theme.HerbrichNexusTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Heartbeat nach Reboot wieder starten, falls Account vorhanden
+        val am = AccountManager.get(this)
+        if (am.getAccountsByType("org.herbrich.accounts").isNotEmpty()) {
+            val work = OneTimeWorkRequestBuilder<HerbrichHeartbeatWorker>().build()
+            WorkManager.getInstance(this).enqueueUniqueWork(
+                "heartbeat",
+                ExistingWorkPolicy.KEEP,
+                work
+            )
+        }
+
         enableEdgeToEdge()
         setContent {
             HerbrichNexusTheme(darkTheme = true, dynamicColor = false) {
